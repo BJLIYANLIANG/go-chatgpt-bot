@@ -1,0 +1,8 @@
+bin/
+.idea/
+nohup.out
+go-chatgpt-bot
+chatgpt-bot
+config.json
+chatgpt.json
+chatgpt-bot.log
