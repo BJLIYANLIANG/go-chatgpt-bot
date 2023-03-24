@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"github.com/samber/lo"
+	"github.com/sashabaranov/go-openai"
 	"os"
 	"strings"
 	"sync"

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"github.com/eatmoreapple/openwechat"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"github.com/sashabaranov/go-openai"
+	"github.com/spf13/cobra"
 
 	"strings"
 	"sync"
@@ -78,58 +78,17 @@ func (h MessageHandler) replyText(msg *openwechat.Message) (*openwechat.SentMess
 
 	if msgContent == "ping" {
 		return msg.ReplyText("pong")
-	}
-	if msgContent == "context" {
+	} else if msgContent == "context" {
 		messages := h.chatContext.GetString(senderName)
 		return msg.ReplyText(messages)
-	}
-	if msgContent == "reload" {
+	} else if msgContent == "reload" {
 		if _, err := confHelper.LoadJsonConf(); err != nil {
 			Logger.Error(err.Error())
 		}
 		return msg.ReplyText("reload success")
-	}
-	if strings.HasPrefix(msgContent, "admin") {
-		tokens := strings.Split(msgContent, " ")
-		if len(tokens) < 4 {
-			return msg.ReplyText("admin command format error")
-		}
-		command := tokens[1]
-		subCommand := tokens[2]
-		value := tokens[3]
-
-		if command == "group" {
-			if subCommand == "add" {
-				confHelper.GetConf().AddGroupNameWhiteList(value)
-				return h.saveAndLoadConf(msg, "add group chat prefix success")
-			}
-			if subCommand == "remove" {
-				confHelper.GetConf().RemoveGroupNameWhiteList(value)
-				return h.saveAndLoadConf(msg, "remove group chat prefix success")
-			}
-			if subCommand == "list" {
-				return h.saveAndLoadConf(msg, strings.Join(confHelper.GetConf().GroupNameWhiteList, "\n"))
-			}
-		}
-		if command == "prompt" {
-			if subCommand == "set" {
-				confHelper.GetConf().SetDefaultPrompt(value)
-				return h.saveAndLoadConf(msg, "set default prompt success")
-			}
-			if subCommand == "get" {
-				return h.saveAndLoadConf(msg, confHelper.GetConf().GetDefaultPrompt().Content)
-			}
-		}
-		if command == "context" {
-			if subCommand == "clear" {
-				h.chatContext.Clear(senderName)
-				return h.saveAndLoadConf(msg, "clear context success")
-			}
-			if strings.ToLower(subCommand) == "clearall" {
-				h.chatContext.ClearAll()
-				return h.saveAndLoadConf(msg, "clear all context success")
-			}
-		}
+	} else if strings.HasPrefix(msgContent, "admin") {
+		_, adminErr := h.handleAdminCommand(msg, msgContent, senderName)
+		return nil, errors.WithMessage(adminErr, "admin command error")
 	}
 
 	newMessage := h.buildChatGPTRequestMessage(msgContent)
@@ -177,7 +136,6 @@ func (h MessageHandler) formatChatGPTResponse(msg *openwechat.Message, responseB
 	content := strings.TrimSpace(responseBody)
 	if isPyp {
 		content = h.fillPypMessageMentionUser(msg, content)
-
 	} else if msg.IsSendByGroup() {
 		content = h.fillGroupMessageMentionUser(msg, content)
 	}
@@ -328,13 +286,14 @@ func (h MessageHandler) GetSenderName(msg *openwechat.Message) string {
 }
 
 func (h MessageHandler) replySys(msg *openwechat.Message) (*openwechat.SentMessage, error) {
-	const paiyipaiPattern = "拍了拍我"
-
-	isPyp := strings.HasSuffix(msg.Content, paiyipaiPattern)
-
+	const paiyipaiSuffix = "拍了拍我"
+	isPyp := strings.HasSuffix(msg.Content, paiyipaiSuffix)
 	Logger.Info("收到系统消息: " + msg.Content)
-	replyText := h.formatChatGPTResponse(msg, "别拍了，我是机器人，我只会回答你的问题，不会回答你的拍砖", isPyp)
-	return msg.ReplyText(replyText)
+	if isPyp {
+		replyText := h.formatChatGPTResponse(msg, "别拍了，我是机器人，我只会回答你的问题，不会回答你的拍砖", isPyp)
+		return msg.ReplyText(replyText)
+	}
+	return nil, nil
 }
 
 func (h MessageHandler) fillPypMessageMentionUser(msg *openwechat.Message, content string) string {
@@ -472,4 +431,48 @@ func (u *ChatContext) GetTimestampMessages(senderName string) ChatCompletionMess
 	u.RLock()
 	defer u.RUnlock()
 	return u.items[senderName]
+}
+
+func (h MessageHandler) handleAdminCommand(msg *openwechat.Message, msgContent string, senderName string) (*openwechat.SentMessage, error) {
+	tokens := strings.Split(msgContent, " ")
+	if len(tokens) < 4 {
+		return msg.ReplyText("admin command format error")
+	}
+	command := tokens[1]
+	subCommand := tokens[2]
+	value := tokens[3]
+
+	if command == "group" {
+		if subCommand == "add" {
+			confHelper.GetConf().AddGroupNameWhiteList(value)
+			return h.saveAndLoadConf(msg, "add group chat prefix success")
+		}
+		if subCommand == "remove" {
+			confHelper.GetConf().RemoveGroupNameWhiteList(value)
+			return h.saveAndLoadConf(msg, "remove group chat prefix success")
+		}
+		if subCommand == "list" {
+			return h.saveAndLoadConf(msg, strings.Join(confHelper.GetConf().GroupNameWhiteList, "\n"))
+		}
+	}
+	if command == "prompt" {
+		if subCommand == "set" {
+			confHelper.GetConf().SetDefaultPrompt(value)
+			return h.saveAndLoadConf(msg, "set default prompt success")
+		}
+		if subCommand == "get" {
+			return h.saveAndLoadConf(msg, confHelper.GetConf().GetDefaultPrompt().Content)
+		}
+	}
+	if command == "context" {
+		if subCommand == "clear" {
+			h.chatContext.Clear(senderName)
+			return h.saveAndLoadConf(msg, "clear context success")
+		}
+		if strings.ToLower(subCommand) == "clearall" {
+			h.chatContext.ClearAll()
+			return h.saveAndLoadConf(msg, "clear all context success")
+		}
+	}
+	return nil, nil
 }
