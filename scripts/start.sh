@@ -103,7 +103,7 @@ cd ${MODULE_DIR}/bin
 echo '' > ../log/chatgpt-bot.log
 
 ulimit -n 500000
-./${MODULE} start --configFile=../etc/chatgpt.json --logFile=../log/chatgpt-bot.log >> ${CONSOLE_LOG} 2>&1 &
+./${MODULE} start --configFile=../etc/chatgpt.json --logFile=../log/chatgpt-bot.log --logLevel=info >> ${CONSOLE_LOG} 2>&1 &
 
 STARTED_PID=$(GetRunningPID)
 

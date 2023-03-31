@@ -1,7 +1,9 @@
 {
-    "token": "sk-XXXXXXXXXXXXXXXXXXX",
+    "token": "sk-xxx",
     "group_chat_prefix": [
         "@Chat",
+        "@NYLON",
+        "@NYL0N",
         "@机器人"
     ],
     "group_name_white_list": [

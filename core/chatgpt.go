@@ -33,6 +33,7 @@ var (
 func init() {
 	ChatGPTCommand.PersistentFlags().StringVarP(&configFile, "configFile", "c", "chatgpt.json", "-c chatgpt.json")
 	ChatGPTCommand.PersistentFlags().StringVarP(&logFile, "logFile", "l", "../log/chatgpt-bot.log", "-l ../log/chatgpt-bot.log")
+	ChatGPTCommand.PersistentFlags().StringVarP(&logLevel, "logLevel", "e", "info", "-e info")
 }
 
 func processMessage(cmd *cobra.Command, args []string) {
@@ -53,7 +54,7 @@ func messageHandler(msg *openwechat.Message) {
 	case openwechat.MsgTypeText:
 		match, message, err := confHelper.MatchGroupFilter(msg)
 		if err != nil {
-			Logger.Debug(fmt.Sprintf("匹配群聊过滤规则失败: %s, err:%s", message, err.Error()))
+			Logger.Error(fmt.Sprintf("匹配群聊过滤规则失败: %s, err:%s", message, err.Error()))
 			return
 		}
 		if !match {

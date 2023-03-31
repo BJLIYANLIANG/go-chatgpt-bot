@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/eatmoreapple/openwechat"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
@@ -112,10 +113,10 @@ func (i *ConfHelper) MatchGroupFilter(msg *openwechat.Message) (bool, string, er
 
 	errMsg := ""
 	if !matchPrefix {
-		errMsg += "不是群聊@机器人的消息;"
+		errMsg += fmt.Sprintf("群聊前缀不符合;期望前缀:%v;当前信息:%s\n", i.conf.GroupChatPrefix, msg.Content)
 	}
 	if !matchGroupName {
-		errMsg += "群聊名称不符合;"
+		errMsg += fmt.Sprintf("群聊名称不符合;期望名称:%v;当前群聊名称:%s", i.conf.GroupNameWhiteList, senderFrom.NickName)
 	}
 	return matchPrefix && matchGroupName, errMsg, nil
 }
