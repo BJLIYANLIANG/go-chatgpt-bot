@@ -109,7 +109,7 @@ func (h MessageHandler) replyText(msg *openwechat.Message) (*openwechat.SentMess
 	}
 
 	responseBody := h.extractChatGPTResponseBody(resp)
-	responseText := h.formatChatGPTResponse(msg, responseBody, false)
+	responseText := h.formatChatGPTResponse(msg, responseBody)
 
 	assistanceMessage := h.buildChatGPTAssistantContextMessage(responseBody)
 	h.chatContext.AppendMessage(senderName, &assistanceMessage)
@@ -137,9 +137,9 @@ func (h MessageHandler) buildChatGPTAssistantContextMessage(responseBody string)
 	}
 }
 
-func (h MessageHandler) formatChatGPTResponse(msg *openwechat.Message, responseBody string, isPyp bool) string {
+func (h MessageHandler) formatChatGPTResponse(msg *openwechat.Message, responseBody string) string {
 	content := strings.TrimSpace(responseBody)
-	if isPyp {
+	if msg.IsTickledMe() {
 		content = h.fillPypMessageMentionUser(msg, content)
 	} else if msg.IsSendByGroup() {
 		content = h.fillGroupMessageMentionUser(msg, content)
@@ -205,7 +205,10 @@ func logInOutMessage(senderName string, req string, rsp string, contexts ChatCom
 }
 
 func buildWechatBotService() *openwechat.Bot {
-	bot := openwechat.DefaultBot(openwechat.Desktop)                   // 桌面模式
+	bot := openwechat.DefaultBot(openwechat.Desktop) // 桌面模式
+	reloadStorage := openwechat.NewFileHotReloadStorage(".login.storage.json")
+	defer reloadStorage.Close()
+
 	bot.SyncCheckCallback = func(resp openwechat.SyncCheckResponse) {} // 忽略回调输出
 
 	// 注册消息处理函数
@@ -213,7 +216,7 @@ func buildWechatBotService() *openwechat.Bot {
 	bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
 
 	// 登陆
-	if err := bot.Login(); err != nil {
+	if err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption()); err != nil {
 		Logger.Panic(err.Error())
 		return nil
 	}
@@ -293,11 +296,9 @@ func (h MessageHandler) GetSenderName(msg *openwechat.Message) string {
 
 // replySys 处理系统消息
 func (h MessageHandler) replySys(msg *openwechat.Message) (*openwechat.SentMessage, error) {
-	const paiyipaiSuffix = "拍了拍我"
-	isPyp := strings.HasSuffix(msg.Content, paiyipaiSuffix)
-	Logger.Info("收到系统消息: " + msg.Content)
+	isPyp := msg.IsTickledMe()
 	if isPyp {
-		replyText := h.formatChatGPTResponse(msg, "别拍了，我是机器人，我只会回答你的问题，不会回答你的拍砖", isPyp)
+		replyText := h.formatChatGPTResponse(msg, "别拍了，我是机器人，我只会回答你的问题，不会回答你的拍砖")
 		return msg.ReplyText(replyText)
 	}
 	return nil, nil
