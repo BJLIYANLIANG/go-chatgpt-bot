@@ -26,15 +26,17 @@ var (
 	handler    MessageHandler
 	confHelper *ConfHelper
 	configFile string
+	logFile    string
 	logLevel   string
 )
 
 func init() {
 	ChatGPTCommand.PersistentFlags().StringVarP(&configFile, "configFile", "c", "chatgpt.json", "-c chatgpt.json")
+	ChatGPTCommand.PersistentFlags().StringVarP(&logFile, "logFile", "l", "../log/chatgpt-bot.log", "-l ../log/chatgpt-bot.log")
 }
 
 func processMessage(cmd *cobra.Command, args []string) {
-	InitLogger(logLevel)
+	InitLogger(logLevel,logFile)
 
 	initConfHelper()
 
@@ -213,7 +215,7 @@ func buildWechatBotService() *openwechat.Bot {
 
 	// 注册消息处理函数
 	bot.MessageHandler = messageHandler // 注册登陆二维码回调
-	bot.UUIDCallback = openwechat.PrintlnQrcodeUrl
+	bot.UUIDCallback = PrintlnQrcodeUrl
 
 	// 登陆
 	if err := bot.PushLogin(reloadStorage, openwechat.NewRetryLoginOption()); err != nil {
@@ -221,6 +223,12 @@ func buildWechatBotService() *openwechat.Bot {
 		return nil
 	}
 	return bot
+}
+
+func PrintlnQrcodeUrl(uuid string)  {
+	Logger.Info("访问下面网址扫描二维码登录")
+	qrcodeUrl := openwechat.GetQrcodeUrl(uuid)
+	Logger.Info(qrcodeUrl)
 }
 
 func buildOpenAIService() {

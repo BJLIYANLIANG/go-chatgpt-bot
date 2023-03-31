@@ -12,7 +12,7 @@ import (
 var Logger *zap.Logger
 
 // InitLogger 初始化日志
-func InitLogger(logLevel string) {
+func InitLogger(logLevel, logFile string) {
 	Logger, _ = zap.NewProduction()
 
 	encoderConfig := zapcore.EncoderConfig{
@@ -43,7 +43,7 @@ func InitLogger(logLevel string) {
 	cores = append(cores,
 		zapcore.NewCore(
 			encoder, // 编码器配置
-			zapcore.NewMultiWriteSyncer(getWriteSyncer()...), // 打印到控制台或文件或其他平台
+			zapcore.NewMultiWriteSyncer(getWriteSyncer(logFile)...), // 打印到控制台或文件或其他平台
 			atomicLevel, // 日志级别
 		),
 	)
@@ -66,14 +66,14 @@ func TimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 
 const TimeFormat = "2006-01-02 15:04:05"
 
-func getWriteSyncer() []zapcore.WriteSyncer {
+func getWriteSyncer(logFile string) []zapcore.WriteSyncer {
 	var items []zapcore.WriteSyncer
 	hook := lumberjack.Logger{
-		Filename:   "chatgpt-bot.log", // 日志文件路径
-		MaxSize:    100,               // 每个日志文件保存的最大尺寸 单位：M
-		MaxBackups: 100,               // 日志文件最多保存多少个备份
-		MaxAge:     100,               // 文件最多保存多少天
-		Compress:   true,              // 是否压缩
+		Filename:   logFile, // 日志文件路径
+		MaxSize:    100,     // 每个日志文件保存的最大尺寸 单位：M
+		MaxBackups: 100,     // 日志文件最多保存多少个备份
+		MaxAge:     100,     // 文件最多保存多少天
+		Compress:   true,    // 是否压缩
 	}
 	items = append(items, zapcore.AddSync(&hook))
 	items = append(items, zapcore.AddSync(os.Stdout))
