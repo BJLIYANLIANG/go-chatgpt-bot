@@ -10,6 +10,6 @@ if [ ! -f "${BASE_DIR}/nohup.out" ]; then
 echo "create file  ${BASE_DIR}/nohup.out"
 fi
 
-nohup "${BASE_DIR}/chatgpt-bot" start -c chatgpt.json & tail -f "${BASE_DIR}/nohup.out"
+nohup "${BASE_DIR}/bin/chatgpt-bot" start -c chatgpt.json & tail -f "${BASE_DIR}/nohup.out"
 
 echo "chatgpt-bot is starting，you can check the ${BASE_DIR}/nohup.out"

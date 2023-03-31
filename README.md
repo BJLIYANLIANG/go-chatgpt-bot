@@ -12,11 +12,11 @@ make bin # 编译
 #### 1. 配置文件
 在https://platform.openai.com/account/api-keys 下获取自己的SECRET KEY，并填入config.yaml文件
 ```shell
-cp etc/config.yaml.example config.yaml
+cp etc/chatgpt.json.example chatgpt.json
 ```
 #### 2. 运行
 ```shell
-./bin/go-chatgpt-bot start -c config.yaml
+./bin/go-chatgpt-bot start -c chatgpt.json
 
 或者 
 bash scripts/start.sh
