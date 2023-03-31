@@ -49,8 +49,13 @@ func messageHandler(msg *openwechat.Message) {
 
 	switch msg.MsgType {
 	case openwechat.MsgTypeText:
-		if msg.IsComeFromGroup() && !confHelper.GetConf().MatchGroupChatPrefix(msg.Content) {
-			Logger.Debug("群聊消息不匹配前缀, 忽略")
+		match, message, err := confHelper.MatchGroupFilter(msg)
+		if err != nil {
+			Logger.Debug(fmt.Sprintf("匹配群聊过滤规则失败: %s, err:%s", message, err.Error()))
+			return
+		}
+		if !match {
+			Logger.Debug(fmt.Sprintf("匹配群聊过滤规则失败: %s", message))
 			return
 		}
 
@@ -268,6 +273,7 @@ func (h MessageHandler) fillGroupMessageMentionUser(msg *openwechat.Message, con
 	return fmt.Sprintf("@%s %s", user.NickName, content)
 }
 
+// GetSenderName 获取发送者名称
 func (h MessageHandler) GetSenderName(msg *openwechat.Message) string {
 	if msg.IsComeFromGroup() {
 		sender, err := msg.SenderInGroup()
@@ -285,6 +291,7 @@ func (h MessageHandler) GetSenderName(msg *openwechat.Message) string {
 	return fmt.Sprintf("Person:%s(%d)", sender.NickName, sender.Uin)
 }
 
+// replySys 处理系统消息
 func (h MessageHandler) replySys(msg *openwechat.Message) (*openwechat.SentMessage, error) {
 	const paiyipaiSuffix = "拍了拍我"
 	isPyp := strings.HasSuffix(msg.Content, paiyipaiSuffix)
@@ -296,6 +303,7 @@ func (h MessageHandler) replySys(msg *openwechat.Message) (*openwechat.SentMessa
 	return nil, nil
 }
 
+// fillPypMessageMentionUser 填充拍一拍消息中的@用户
 func (h MessageHandler) fillPypMessageMentionUser(msg *openwechat.Message, content string) string {
 	tokens := strings.Split(msg.Content, `"`)
 	if len(tokens) >= 1 {
@@ -309,6 +317,7 @@ type ChatContext struct {
 	sync.RWMutex
 }
 
+// SetDefaultMessage 设置默认消息
 func (u *ChatContext) SetDefaultMessage(key string) {
 	u.Lock()
 	defer u.Unlock()
@@ -350,12 +359,14 @@ func (c *ChatCompletionMessages) RemoveSecondItem() {
 	*c = append((*c)[:1], (*c)[2:]...)
 }
 
+// FillTimestamp 填充时间戳
 func (c *ChatCompletionMessage) FillTimestamp() {
 	if c.Timestamp == 0 {
 		c.Timestamp = uint64(time.Now().Unix())
 	}
 }
 
+// GetValidChatCompletionMessages 获取有效时间范围内的聊天消息
 func (c *ChatCompletionMessages) GetValidChatCompletionMessages() []openai.ChatCompletionMessage {
 	result := make([]openai.ChatCompletionMessage, 0)
 	for _, v := range *c {
@@ -367,6 +378,7 @@ func (c *ChatCompletionMessages) GetValidChatCompletionMessages() []openai.ChatC
 	return result
 }
 
+// GetValidMessages 获取有效时间范围内的聊天消息
 func (c *ChatCompletionMessages) GetValidMessages() ChatCompletionMessages {
 	result := make([]*ChatCompletionMessage, 0)
 	for _, v := range *c {
@@ -378,12 +390,14 @@ func (c *ChatCompletionMessages) GetValidMessages() ChatCompletionMessages {
 	return result
 }
 
+// IsExpired 判断消息是否过期
 func (i *ChatCompletionMessage) IsExpired() bool {
 	messageExpireTimestamp := i.Timestamp + uint64(confHelper.ConversationTimeout())
 	currentTimestamp := uint64(time.Now().Unix())
 	return messageExpireTimestamp < currentTimestamp
 }
 
+// AppendMessage 追加消息
 func (u *ChatContext) AppendMessage(key string, value *ChatCompletionMessage) {
 	u.Lock()
 	defer u.Unlock()
@@ -406,20 +420,21 @@ func (u *ChatContext) AppendMessage(key string, value *ChatCompletionMessage) {
 	u.items[key] = validMs
 }
 
-// clear
+// Clear 清除消息
 func (u *ChatContext) Clear(key string) {
 	u.Lock()
 	defer u.Unlock()
 	u.items[key] = make(ChatCompletionMessages, 0)
 }
 
-// clear
+// ClearAll 清除所有消息
 func (u *ChatContext) ClearAll() {
 	u.Lock()
 	defer u.Unlock()
 	u.items = make(map[string]ChatCompletionMessages, 0)
 }
 
+// GetMessages 获取消息
 func (u *ChatContext) GetMessages(senderName string) []openai.ChatCompletionMessage {
 	u.RLock()
 	defer u.RUnlock()
@@ -427,13 +442,16 @@ func (u *ChatContext) GetMessages(senderName string) []openai.ChatCompletionMess
 	return val.GetValidChatCompletionMessages()
 }
 
+// GetTimestampMessages 获取消息
 func (u *ChatContext) GetTimestampMessages(senderName string) ChatCompletionMessages {
 	u.RLock()
 	defer u.RUnlock()
 	return u.items[senderName]
 }
 
-func (h MessageHandler) handleAdminCommand(msg *openwechat.Message, msgContent string, senderName string) (*openwechat.SentMessage, error) {
+// handleAdminCommand 处理管理员命令
+func (h MessageHandler) handleAdminCommand(msg *openwechat.Message, msgContent string, senderName string,
+) (*openwechat.SentMessage, error) {
 	tokens := strings.Split(msgContent, " ")
 	if len(tokens) < 4 {
 		return msg.ReplyText("admin command format error")

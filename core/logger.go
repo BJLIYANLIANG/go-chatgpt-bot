@@ -11,6 +11,7 @@ import (
 
 var Logger *zap.Logger
 
+// InitLogger 初始化日志
 func InitLogger(logLevel string) {
 	Logger, _ = zap.NewProduction()
 
